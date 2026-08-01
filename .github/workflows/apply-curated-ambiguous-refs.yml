@@ -1,0 +1,75 @@
+name: Apply curated ambiguous image references
+
+on:
+  pull_request:
+    branches:
+      - update/renaming-images-2026
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout involved JSON files
+        uses: actions/checkout@v4
+        with:
+          ref: agent/apply-curated-ambiguous-refs-20260801
+          fetch-depth: 1
+          sparse-checkout: |
+            .github/workflows
+            book/Mistfactor Press; Van Richten's Encyclopedia of Darklords & Domains Volume 1.json
+            book/aeyana; The Book of Hordes.json
+            collection/KajaGrae; Fang Dragons.json
+            collection/Team Brievary; An Introduction to the Seishin Isles.json
+            collection/windrockstar; Tales of new worlds.json
+            creature/Angry Golem Games; Monster Manual (A-G).json
+            creature/Angry Golem Games; Monster Manual (H-M).json
+            creature/Angry Golem Games; Monster Manual (N-S).json
+            creature/D&D 4ed; Dark Sun Creature Catalog.json
+            creature/Lair of Dragons; 5 High Level Villains.json
+            creature/Nicksoliss; The Seven Dragon Overlords.json
+            creature/Web Community; Community Ravenloft Collection.json
+            deity/D&D 3ed; Deities of the World of Claybough.json
+            subclass/Hicks Homebrew; Inner Visage Sorcerous Origin.json
+          sparse-checkout-cone-mode: false
+
+      - name: Apply and validate curated JSON package
+        shell: bash
+        env:
+          PACKAGE_URL: "https://sdmntprnortheu.oaiusercontent.com/files/00000000-5bd0-81f4-80b3-e11455ef06da/raw?se=2026-08-01T13:45:10Z&sp=r&sv=2026-02-06&sr=b&scid=c8a53efc-1d2c-5832-ad00-baca11408485&skoid=a0b9f82a-c86e-4064-a822-2aa38890bb37&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-01T06:23:55Z&ske=2026-08-02T06:23:55Z&sks=b&skv=2026-02-06&sig=cDaFQOZDeil5MYVuSjXE1rb7dxuaL6uP4HQpT7W%2Bkss%3D"
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 "$PACKAGE_URL" -o package.zip
+          unzip -q package.zip -d package
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          package = Path('package')
+          report = json.loads((package / 'report.json').read_text(encoding='utf-8'))
+          if report.get('mapping_count') != 124:
+              raise SystemExit(f"Unexpected mapping count: {report.get('mapping_count')}")
+          changes = package / 'changes'
+          for source in changes.rglob('*.json'):
+              destination = Path('.') / source.relative_to(changes)
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(source, destination)
+              json.loads(destination.read_text(encoding='utf-8'))
+          changed_text = '\n'.join(path.read_text(encoding='utf-8') for path in Path('.').rglob('*.json') if '.git' not in path.parts)
+          remaining = [old for old in report['delete_old_paths'] if old in changed_text]
+          if remaining:
+              raise SystemExit(f'Residual old references: {remaining[:20]}')
+          for mapping in report['mappings']:
+              if mapping['new'] not in changed_text:
+                  raise SystemExit(f"Missing new reference: {mapping['new']}")
+          print(f"Validated {len(report['mappings'])} mappings across {len(report['modified_json_files'])} JSON files")
+          PY
+          rm -rf package package.zip
+          git rm .github/workflows/apply-curated-ambiguous-refs.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply curated ambiguous image references"
+          git push origin HEAD:agent/apply-curated-ambiguous-refs-20260801
