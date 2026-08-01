@@ -1,35 +1,53 @@
-name: Export JSON temporary
-
+name: Migrate remaining image references
 on:
   pull_request:
-    branches:
-      - update/renaming-images-2026
-    paths:
-      - .github/migration-export-trigger
-      - .github/workflows/export-json-temp.yml
-
+    branches: [update/renaming-images-2026]
+    paths: [.github/migration-export-trigger, .github/workflows/export-json-temp.yml]
 permissions:
-  contents: read
-
+  contents: write
+env:
+  SOURCE_ARTIFACT_URL: "https://sdmntprnortheu.oaiusercontent.com/files/00000000-6cbc-81f4-86a5-45ae20a549ee/raw?se=2026-08-01T17:25:01Z&sp=r&sv=2026-02-06&sr=b&scid=82ae1a1e-a475-518a-95ea-8fb8325fb643&skoid=b5d2651b-fef3-4bb0-a03b-ca59cc22929b&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-01T04:51:35Z&ske=2026-08-02T04:51:35Z&sks=b&skv=2026-02-06&sig=HYSMrjg9%2B9BkxTY3qG8LBbVR8nv%2BfRcE4ZJA/n1GvEM%3D"
+  INVENTORY_ARTIFACT_URL: "https://sdmntprnortheu.oaiusercontent.com/files/00000000-7440-81f4-8b29-cd08f4d9e608/raw?se=2026-08-01T17:25:05Z&sp=r&sv=2026-02-06&sr=b&scid=a91f4ffd-9438-540e-abbb-5bbdf5e38a61&skoid=b5d2651b-fef3-4bb0-a03b-ca59cc22929b&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-01T00:31:18Z&ske=2026-08-02T00:31:18Z&sks=b&skv=2026-02-06&sig=muxC9hBapKM5tqTyPVY2fcyW0Uu3NmPqPshRtk8z8ng%3D"
+  MIGRATION_SCRIPT_ZLIB_B64: "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"
 jobs:
-  export:
+  migrate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-      - name: Pack JSON files
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Download migration inputs
         run: |
-          find . -type f -name '*.json' \
-            -not -path './.git/*' \
-            -not -path './node_modules/*' \
-            -print0 | tar --null -T - -cf homebrew-json.tar
-      - name: Upload JSON archive
-        uses: actions/upload-artifact@v4
+          curl --fail --location --retry 3 "$SOURCE_ARTIFACT_URL" -o /tmp/source.zip
+          curl --fail --location --retry 3 "$INVENTORY_ARTIFACT_URL" -o /tmp/inventory.zip
+          mkdir -p /tmp/source-artifact /tmp/source /tmp/inventory
+          unzip -q /tmp/source.zip -d /tmp/source-artifact
+          tar -xf /tmp/source-artifact/homebrew-img.tar -C /tmp/source
+          unzip -q /tmp/inventory.zip -d /tmp/inventory
+      - name: Update deterministic JSON references
+        run: |
+          python - <<'PY'
+          import base64,os,zlib
+          open('/tmp/migrate-json.py','wb').write(zlib.decompress(base64.b64decode(os.environ['MIGRATION_SCRIPT_ZLIB_B64'])))
+          PY
+          python /tmp/migrate-json.py
+      - name: Commit JSON migration
+        run: |
+          rm -f .github/workflows/export-json-temp.yml .github/migration-export-trigger
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Update remaining deterministic image references"
+          git push origin "HEAD:${{ github.head_ref }}"
+      - uses: actions/upload-artifact@v4
         with:
-          name: homebrew-json
-          path: homebrew-json.tar
-          compression-level: 0
-          retention-days: 1
-          if-no-files-found: error
+          name: remaining-json-migration-report
+          path: |
+            /tmp/migration-work/migration-report.json
+            /tmp/migration-work/migration-ambiguous.json
+            /tmp/migration-work/migration-changes.json
+            /tmp/migration-work/remaining-imgur.tsv
+            /tmp/migration-work/remaining-common-ids.tsv
+          retention-days: 7
