@@ -15,7 +15,7 @@ jobs:
       - name: Checkout affected JSON
         uses: actions/checkout@v4
         with:
-          ref: agent/apply-curated-ambiguous-refs-20260801
+          ref: agent/finalize-curated-ambiguous-refs-20260801
           fetch-depth: 1
           sparse-checkout: |
             .github/workflows
@@ -44,9 +44,8 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
           git rm .github/workflows/apply-curated-ambiguous-refs.yml
-          git rm .github/workflows/correct-house-daylight-reference.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "Correct House of Lament daylight map reference"
-          git push origin HEAD:agent/apply-curated-ambiguous-refs-20260801
+          git push origin HEAD:agent/finalize-curated-ambiguous-refs-20260801
