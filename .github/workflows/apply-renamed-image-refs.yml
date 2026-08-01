@@ -1,0 +1,98 @@
+name: Apply renamed image references
+
+on:
+  pull_request:
+    branches:
+      - update/renaming-images-2026
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'agent/update-renamed-image-refs-20260801'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout involved JSON files
+        uses: actions/checkout@v4
+        with:
+          ref: agent/update-renamed-image-refs-20260801
+          fetch-depth: 0
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            .github/workflows/apply-renamed-image-refs.yml
+            book/Mistfactor Press; Van Richten's Encyclopedia of Darklords & Domains Volume 1.json
+            book/Modiphius; Raiders of the Serpent Sea - Player's Guide Free.json
+            book/aeyana; The Book of Hordes.json
+            class/Bryan Williams; Wychlaran Witch.json
+            collection/KajaGrae; Fang Dragons.json
+            collection/Team Brievary; An Introduction to the Seishin Isles.json
+            collection/windrockstar; Tales of new worlds.json
+            creature/Angry Golem Games; Monster Manual (A-G).json
+            creature/Angry Golem Games; Monster Manual (H-M).json
+            creature/Angry Golem Games; Monster Manual (N-S).json
+            creature/D&D 4ed; Dark Sun Creature Catalog.json
+            creature/Lair of Dragons; 5 High Level Villains.json
+            creature/Mistfactor Press; Darklords & Domains.json
+            creature/Narzghal; Vladimir, the Crimson Reaper.json
+            creature/Nicksoliss; The Seven Dragon Overlords.json
+            creature/Sonixverse Labs; Expanded Sentient Plants.json
+            creature/Web Community; Community Aberration Creature Collection.json
+            creature/Web Community; Community Aberration Legendary Creature Collection.json
+            creature/Web Community; Community Celestial Creature Collection.json
+            creature/Web Community; Community Celestial Legendary Creature Collection.json
+            creature/Web Community; Community Construct Creature Collection.json
+            creature/Web Community; Community Elemental Legendary Creature Collection.json
+            creature/Web Community; Community Humanoid Orc,Goblin,Hobgoblin Creature Collection.json
+            creature/Web Community; Community Ravenloft Collection.json
+            creature/Web Community; Community Undead Legendary Creature Collection.json
+            creature/World Builder Blog; Catastrophic Dragons.json
+            creature/filmatra; Armies of War.json
+            creature/swtfoley1; Brides & Consorts of Stradh.json
+            deity/AAW Games; Deities of the World of Aventyr.json
+            deity/D&D 3ed; Deities of the World of Claybough.json
+            item/Web Community; Community Items Collection.json
+            subclass/Hicks Homebrew; Inner Visage Sorcerous Origin.json
+
+      - name: Download and apply verified JSON package
+        env:
+          PACKAGE_URL: "https://sdmntpritalynorth.oaiusercontent.com/files/00000000-8de0-8246-93ed-e975a9a7307e/raw?se=2026-08-01T11:54:50Z&sp=r&sv=2026-02-06&sr=b&scid=b9d478b1-e481-5b15-9dcb-8198202ee321&skoid=a0b9f82a-c86e-4064-a822-2aa38890bb37&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-01T05:03:58Z&ske=2026-08-02T05:03:58Z&sks=b&skv=2026-02-06&sig=qcnvsDCLeR5HVp1HE4voDTEKI1rAC8s3aVPhmnQ1WsQ%3D"
+          PACKAGE_SHA256: "031cb7498b5cf9d236e9d89e548af8048b54ed52ffb2971e22a2251698ce4660"
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 "$PACKAGE_URL" --output package.zip
+          echo "$PACKAGE_SHA256  package.zip" | sha256sum --check -
+          mkdir package
+          unzip -q package.zip -d package
+          cp -a package/changes/. ./
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('package/report.json').read_text(encoding='utf-8'))
+          changed = report['modified_json_files']
+          if len(changed) != 32:
+              raise SystemExit(f'Expected 32 JSON files, got {len(changed)}')
+          for rel in changed:
+              path = Path(rel)
+              if not path.is_file():
+                  raise SystemExit(f'Missing changed JSON: {rel}')
+              json.loads(path.read_text(encoding='utf-8'))
+          unresolved = report.get('unresolved_reference_counts', {})
+          if unresolved:
+              raise SystemExit(f'Unresolved image references remain: {unresolved}')
+          print(f'Validated {len(changed)} JSON files')
+          PY
+
+          rm -rf package package.zip
+          rm -f .github/workflows/apply-renamed-image-refs.yml
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "Update references to renamed WebP images"
+          git push origin HEAD:agent/update-renamed-image-refs-20260801
