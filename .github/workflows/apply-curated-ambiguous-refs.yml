@@ -1,9 +1,9 @@
 name: Apply curated ambiguous image references
 
 on:
-  pull_request:
+  push:
     branches:
-      - update/renaming-images-2026
+      - agent/finalize-curated-ambiguous-refs-20260801
 
 permissions:
   contents: write
