@@ -39,7 +39,7 @@ jobs:
       - name: Apply and validate curated JSON package
         shell: bash
         env:
-          PACKAGE_URL: "https://sdmntprnortheu.oaiusercontent.com/files/00000000-5bd0-81f4-80b3-e11455ef06da/raw?se=2026-08-01T13:45:10Z&sp=r&sv=2026-02-06&sr=b&scid=c8a53efc-1d2c-5832-ad00-baca11408485&skoid=a0b9f82a-c86e-4064-a822-2aa38890bb37&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-01T06:23:55Z&ske=2026-08-02T06:23:55Z&sks=b&skv=2026-02-06&sig=cDaFQOZDeil5MYVuSjXE1rb7dxuaL6uP4HQpT7W%2Bkss%3D"
+          PACKAGE_URL: "https://sdmntprpolandcentral.oaiusercontent.com/files/00000000-6604-820a-a8f6-926e5d9beec9/raw?se=2026-08-01T13:49:01Z&sp=r&sv=2026-02-06&sr=b&scid=6f203ef2-16fc-5cb0-a928-7966de3f6706&skoid=a0b9f82a-c86e-4064-a822-2aa38890bb37&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-01T03:50:46Z&ske=2026-08-02T03:50:46Z&sks=b&skv=2026-02-06&sig=07OStqUu0yq/I7JYDU%2BEFpVTg3ZBB94UPrSt0EQ0BRo%3D"
         run: |
           set -euo pipefail
           curl --fail --location --retry 3 "$PACKAGE_URL" -o package.zip
@@ -57,7 +57,10 @@ jobs:
               destination.parent.mkdir(parents=True, exist_ok=True)
               shutil.copy2(source, destination)
               json.loads(destination.read_text(encoding='utf-8'))
-          changed_text = '\n'.join(path.read_text(encoding='utf-8') for path in Path('.').rglob('*.json') if '.git' not in path.parts)
+          changed_text = '\n'.join(
+              Path(rel).read_text(encoding='utf-8')
+              for rel in report['modified_json_files']
+          )
           remaining = [old for old in report['delete_old_paths'] if old in changed_text]
           if remaining:
               raise SystemExit(f'Residual old references: {remaining[:20]}')
